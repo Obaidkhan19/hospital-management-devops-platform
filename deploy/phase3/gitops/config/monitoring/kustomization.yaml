@@ -13,4 +13,4 @@ generatorOptions:
 configMapGenerator:
   - name: hospital-kubernetes-dashboard
     files:
-      - hospital-kubernetes-monitoring.json=../../../../monitoring/Dashboard/hospital-kubernetes-monitoring.json
+      - hospital-overview.json
