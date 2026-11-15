@@ -30,11 +30,16 @@ make host
 
 make vault
 
-
-
 make down  = delete vm
 
 make wipe = delete all
+
+sudo virsh -c qemu:///system list --all
+docker ps -a
+
+virsh -c qemu:///system list --all
+docker ps -a
+free -h ; df -h /
 
 ### 5. Wait and watch
 
@@ -65,12 +70,6 @@ echo
 | Vault                    | http://vault.test                                         | token in `.vault-init.json` (`root_token`)                                                                                       |
 | Rancher                  | https://rancher.test (accept the self-signed certificate) | password: `kubectl -n cattle-system get secret bootstrap-secret -o go-template='{{.data.bootstrapPassword\|base64decode}}{{"\n"}}'` |
 | MinIO                    | http://localhost:9001                                     | the login in cat deploy/phase3/minio/.env                                                                                           |
-
-
-
-
-
-
 
 # Commands: is my project running properly?
 

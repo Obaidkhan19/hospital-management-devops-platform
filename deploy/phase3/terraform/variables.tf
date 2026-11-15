@@ -31,7 +31,7 @@ variable "worker_count" {
 
 variable "server_memory_mb" {
   type    = number
-  default = 4096
+  default = 8192
 }
 
 variable "server_vcpus" {
@@ -42,7 +42,7 @@ variable "server_vcpus" {
 variable "worker_memory_mb" {
   description = "8 GB each, because Rancher, monitoring and two SQL Servers run here."
   type        = number
-  default     = 8192
+  default     = 6144
 }
 
 variable "worker_vcpus" {
