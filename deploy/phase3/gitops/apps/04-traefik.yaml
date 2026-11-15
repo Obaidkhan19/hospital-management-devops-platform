@@ -1,12 +1,11 @@
-# Traefik: the ingress controller, same as in Phase 1 and 2. Must live in kube-system with the
-# label app.kubernetes.io/name=traefik because the hospital NetworkPolicy allows exactly that.
-# MetalLB gives it the fixed IP 10.10.10.200, so one /etc/hosts line serves every site.
+
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: traefik
   namespace: argocd
-  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
@@ -15,17 +14,36 @@ spec:
     targetRevision: "*"
     helm:
       valuesObject:
-        deployment: {replicas: 1}
+        deployment:
+          replicas: 1
         service:
-          type: LoadBalancer
-          annotations: {metallb.io/loadBalancerIPs: 10.10.10.200}
+          annotations:
+            metallb.io/loadBalancerIPs: "10.10.10.200"
+          spec:
+            type: LoadBalancer
         providers:
-          kubernetesIngress: {publishedService: {enabled: true}}
-        ingressClass: {enabled: true, isDefaultClass: true}
+          kubernetesIngress:
+            publishedService:
+              enabled: true
+        ingressClass:
+          enabled: true
+          isDefaultClass: true
         resources:
-          requests: {cpu: 50m, memory: 64Mi}
-          limits: {memory: 256Mi}
-  destination: {server: https://kubernetes.default.svc, namespace: kube-system}
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
   syncPolicy:
-    automated: {prune: true, selfHeal: true}
-    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 20
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 5m

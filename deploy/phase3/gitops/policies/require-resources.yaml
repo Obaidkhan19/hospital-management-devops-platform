@@ -1,27 +1,30 @@
-# Kyverno policy: every container in the hospital namespaces must set CPU/memory requests and a memory limit.
-# (The Phase 2 chart already does, this keeps it that way.) Audit mode.
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: require-resources
 spec:
-  validationFailureAction: Audit
-  background: true
-  rules:
-    - name: requests-and-limits
-      match:
-        any:
-          - resources:
-              kinds: [Pod]
-              namespaces: [hospital-a, hospital-b]
-      validate:
-        message: "Set resources.requests (cpu, memory) and resources.limits.memory."
-        pattern:
-          spec:
-            containers:
-              - resources:
-                  requests:
-                    cpu: "?*"
-                    memory: "?*"
-                  limits:
-                    memory: "?*"
+  validationActions:
+    - Audit
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: hospital-namespaces-only
+      expression: >-
+        object.metadata.namespace in ['hospital-a', 'hospital-b']
+  validations:
+    - message: "Set resources.requests (cpu, memory) and resources.limits.memory."
+      expression: >-
+        object.spec.containers.all(
+          container,
+          has(container.resources) &&
+          has(container.resources.requests) &&
+          has(container.resources.requests.cpu) &&
+          has(container.resources.requests.memory) &&
+          has(container.resources.limits) &&
+          has(container.resources.limits.memory)
+        )

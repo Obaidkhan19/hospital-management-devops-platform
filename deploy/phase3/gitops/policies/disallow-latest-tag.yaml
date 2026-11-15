@@ -1,24 +1,34 @@
 # Kyverno policy: no image may use the tag ":latest" (it changes silently). Audit mode, system namespaces skipped.
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: disallow-latest-tag
 spec:
-  validationFailureAction: Audit
-  background: true
-  rules:
-    - name: no-latest
-      match:
-        any:
-          - resources:
-              kinds: [Pod]
-      exclude:
-        any:
-          - resources:
-              namespaces: [kube-system, kube-public, kube-node-lease]
-      validate:
-        message: "Use a fixed image tag, not :latest."
-        pattern:
-          spec:
-            containers:
-              - image: "!*:latest"
+  validationActions:
+    - Audit
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: exclude-system-namespaces
+      expression: >-
+        object.metadata.namespace != 'kube-system' &&
+        object.metadata.namespace != 'kube-public' &&
+        object.metadata.namespace != 'kube-node-lease'
+  validations:
+    - message: "Use a fixed image tag, not :latest."
+      expression: >-
+        object.spec.containers.all(
+          container,
+          !container.image.matches('^.+:latest(@.*)?$')
+        ) &&
+        (
+          !has(object.spec.initContainers) ||
+          object.spec.initContainers.all(
+            container,
+            !container.image.matches('^.+:latest(@.*)?$')
+          )
+        )
