@@ -26,6 +26,7 @@ vms:
 	terraform -chdir=terraform apply -auto-approve
 
 cluster:
+	cd ansible && ansible all -i inventory.ini -m wait_for_connection -a "timeout=600" -f 3
 	cd ansible && ansible-playbook site.yml
 
 bootstrap:

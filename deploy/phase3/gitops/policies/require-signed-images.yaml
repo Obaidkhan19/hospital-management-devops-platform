@@ -5,7 +5,7 @@ metadata:
   name: require-signed-images
 spec:
   validationActions:
-    - Audit
+    - Deny
   webhookConfiguration:
     timeoutSeconds: 30
   matchConstraints:

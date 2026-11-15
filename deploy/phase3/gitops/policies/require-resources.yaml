@@ -5,7 +5,7 @@ metadata:
   name: require-resources
 spec:
   validationActions:
-    - Audit
+    - Deny
   matchConstraints:
     resourceRules:
       - apiGroups: [""]

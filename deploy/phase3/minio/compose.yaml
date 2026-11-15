@@ -1,9 +1,10 @@
-# compose.yaml - MinIO (S3 storage) on your laptop, OUTSIDE the cluster. Velero sends backups here,
+# compose.yaml - S3 storage (MinIO) on your laptop, OUTSIDE the cluster. Velero sends backups here,
 # so they survive when you destroy the VMs. Start: docker compose up -d. The init container creates the bucket "velero".
-# Image tag is pinned: MinIO stopped publishing new community images, so this one is frozen on purpose.
+# MinIO no longer publishes community images, so the server comes from Chainguard and the bucket is made with the AWS CLI.
 services:
   minio:
-    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: cgr.dev/chainguard/minio:latest
+    user: "0:0"
     command: server /data --console-address ":9001"
     env_file: .env
     ports:
@@ -14,13 +15,15 @@ services:
     restart: unless-stopped
 
   minio-init:
-    image: minio/mc
+    image: amazon/aws-cli
     depends_on:
       - minio
     env_file: .env
+    environment:
+      AWS_DEFAULT_REGION: us-east-1
     entrypoint: >
-      /bin/sh -c "until mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD; do sleep 2; done;
-      mc mb -p local/velero; exit 0"
+      /bin/sh -c "export AWS_ACCESS_KEY_ID=$$MINIO_ROOT_USER AWS_SECRET_ACCESS_KEY=$$MINIO_ROOT_PASSWORD;
+      until aws --endpoint-url http://minio:9000 s3api head-bucket --bucket velero || aws --endpoint-url http://minio:9000 s3 mb s3://velero; do sleep 2; done"
 
 volumes:
   minio-data:

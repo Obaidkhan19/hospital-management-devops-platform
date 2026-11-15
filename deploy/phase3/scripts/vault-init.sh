@@ -16,7 +16,7 @@ for _ in $(seq 1 120); do
   kubectl -n vault get pod vault-0 >/dev/null 2>&1 && break
   sleep 10
 done
-kubectl -n vault wait --for=condition=Ready pod/vault-0 --timeout=600s
+kubectl -n vault wait --for=jsonpath='{.status.phase}'=Running pod/vault-0 --timeout=600s
 
 vault() { kubectl -n vault exec -i vault-0 -- env VAULT_TOKEN="${TOKEN:-}" vault "$@"; }
 field() { python3 -c "import sys,json; print(json.load(sys.stdin)['$1'])"; }

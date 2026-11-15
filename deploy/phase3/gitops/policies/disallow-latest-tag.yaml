@@ -5,7 +5,7 @@ metadata:
   name: disallow-latest-tag
 spec:
   validationActions:
-    - Audit
+    - Deny
   matchConstraints:
     resourceRules:
       - apiGroups: [""]
