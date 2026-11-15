@@ -1,0 +1,53 @@
+---
+# rke2_server: installs RKE2 as a control-plane node and starts it.
+# The first server starts a new cluster. With rke2_join=true a server joins the first one.
+
+- name: Download the RKE2 installer
+  ansible.builtin.get_url:
+    url: https://get.rke2.io
+    dest: /usr/local/bin/rke2-install.sh
+    mode: "0755"
+
+- name: Install RKE2 (server)
+  ansible.builtin.command: /usr/local/bin/rke2-install.sh
+  environment:
+    INSTALL_RKE2_TYPE: server
+    INSTALL_RKE2_CHANNEL: "{{ rke2_channel }}"
+    INSTALL_RKE2_VERSION: "{{ rke2_version }}"
+  args:
+    creates: /usr/local/bin/rke2
+
+- name: Create the config folder
+  ansible.builtin.file:
+    path: /etc/rancher/rke2
+    state: directory
+    mode: "0755"
+
+- name: Write the RKE2 config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/rke2/config.yaml
+    mode: "0600"
+  notify: Restart rke2-server
+
+- name: Wait for the first server (join only)
+  ansible.builtin.wait_for:
+    host: "{{ rke2_api_address }}"
+    port: 9345
+    timeout: 900
+  when: rke2_join | default(false) | bool
+
+- name: Enable and start rke2-server
+  ansible.builtin.systemd:
+    name: rke2-server
+    enabled: true
+    state: started
+
+- name: Wait until the API answers
+  ansible.builtin.command: >
+    /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get nodes
+  register: rke2_server_api_check
+  until: rke2_server_api_check.rc == 0
+  retries: 60
+  delay: 10
+  changed_when: false

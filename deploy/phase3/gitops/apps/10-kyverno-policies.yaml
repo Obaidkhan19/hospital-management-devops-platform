@@ -1,0 +1,19 @@
+# The Kyverno policies (gitops/policies): signed images, no :latest tag, limits required.
+# They start in Audit mode (report only). docs/runbook.md shows how to switch to Enforce.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno-policies
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Obaidkhan19/hospital-management-devops-platform
+    targetRevision: main
+    path: deploy/phase3/gitops/policies
+  destination: {server: https://kubernetes.default.svc, namespace: kyverno}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [SkipDryRunOnMissingResource=true]
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

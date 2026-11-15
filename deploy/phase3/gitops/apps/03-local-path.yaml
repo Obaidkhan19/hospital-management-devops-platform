@@ -1,0 +1,23 @@
+# local-path-provisioner: the "local-path" StorageClass that the hospital chart uses for the database disk.
+# (RKE2 does not ship it, k3d did.) Installed from the project's own Helm chart in Git.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: local-path
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/rancher/local-path-provisioner
+    targetRevision: v0.0.30
+    path: deploy/chart/local-path-provisioner
+    helm:
+      valuesObject:
+        storageClass: {defaultClass: true}
+  destination: {server: https://kubernetes.default.svc, namespace: local-path-storage}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]
+    managedNamespaceMetadata: {labels: {pod-security.kubernetes.io/enforce: privileged}}
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

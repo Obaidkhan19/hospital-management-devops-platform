@@ -1,15 +1,53 @@
-# Build output
+
+# ==========================================
+# .NET BUILD OUTPUT
+# ==========================================
 bin/
 obj/
 
+# ==========================================
 # IDE
+# ==========================================
 .vs/
 .idea/
 *.user
 
-# Secrets and local settings - never commit these
+# ==========================================
+# SECRETS AND LOCAL SETTINGS
+# ==========================================
 .env
+**/.env
 appsettings.Local.json
 
-# Test results
+# ==========================================
+# TEST RESULTS
+# ==========================================
 TestResults/
+
+# ==========================================
+# PHASE 2 - KUBERNETES / CONFIG SECRETS
+# ==========================================
+kubeconfig
+.rke2-token
+.vault-init.json
+.vault-secrets.txt
+
+# ==========================================
+# PHASE 3 - INFRASTRUCTURE / TERRAFORM
+# ==========================================
+ansible/inventory.ini
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+terraform/crash.log
+
+# ==========================================
+# GENERATED / LOCAL FILES
+# ==========================================
+minio/.env
+
+# Local secrets, binaries and backups
+.env.save
+kubectl
+backups/

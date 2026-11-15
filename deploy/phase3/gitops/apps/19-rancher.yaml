@@ -1,0 +1,26 @@
+# Rancher Manager (free open-source edition): web UI, users and roles for the cluster at https://rancher.test.
+# Needs cert-manager (05) for its HTTPS certificate. No password in Git: Rancher creates a one-time
+# bootstrap password, see docs/runbook.md for the command that prints it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rancher
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+spec:
+  project: default
+  source:
+    repoURL: https://releases.rancher.com/server-charts/stable
+    chart: rancher
+    targetRevision: "*"
+    helm:
+      valuesObject:
+        hostname: rancher.test
+        replicas: 1
+        ingress: {ingressClassName: traefik}
+  destination: {server: https://kubernetes.default.svc, namespace: cattle-system}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    managedNamespaceMetadata: {labels: {pod-security.kubernetes.io/enforce: privileged}}
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

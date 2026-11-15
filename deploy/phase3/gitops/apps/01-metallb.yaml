@@ -1,0 +1,23 @@
+# MetalLB: gives Services of type LoadBalancer a real IP on the VM network (a cloud does this for you).
+# Needs the "privileged" label on its namespace because the speaker uses the host network.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metallb
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+spec:
+  project: default
+  source:
+    repoURL: https://metallb.github.io/metallb
+    chart: metallb
+    targetRevision: "0.*"
+    helm:
+      valuesObject:
+        speaker: {frr: {enabled: false}}
+  destination: {server: https://kubernetes.default.svc, namespace: metallb-system}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    managedNamespaceMetadata: {labels: {pod-security.kubernetes.io/enforce: privileged}}
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

@@ -1,0 +1,23 @@
+---
+# group_vars/all.yml - the settings for the whole cluster.
+
+# RKE2 version: empty = newest build of the channel. To pin: "v1.xx.x+rke2r1".
+rke2_channel: stable
+rke2_version: ""
+
+# Address that nodes and kubectl use to reach the API. Today: the first server.
+# For 3 servers later, put a fixed address (VIP or DNS name) here BEFORE the first install.
+rke2_api_address: "{{ hostvars[groups['rke2_servers'][0]].ansible_host }}"
+
+# Join secret. Created once and kept in .rke2-token (not committed).
+rke2_token: "{{ lookup('ansible.builtin.password', playbook_dir + '/../.rke2-token chars=ascii_letters,digits length=40') }}"
+
+# Switch: CIS hardening profile. Off by default. Turn on, then rebuild the cluster.
+rke2_cis: false
+
+# Keep control-plane nodes free of normal pods (workers run the apps).
+rke2_server_taint: true
+
+# etcd snapshots (the cluster database backup, stored on the server).
+rke2_etcd_snapshot_cron: "0 */6 * * *"
+rke2_etcd_snapshot_retention: 10

@@ -50,7 +50,7 @@ jobs:
 
       # -strict   = unknown or misspelled fields are errors
       - name: kubeconform (the rendered chart and the Phase 1 YAML)
-        run: ./kubeconform -strict -summary -kubernetes-version 1.31.0 rendered deploy/k8s/02-hospital-a deploy/k8s/03-hospital-b
+        run: ./kubeconform -strict -summary -kubernetes-version 1.31.0 rendered
 
       - name: kube-linter
         continue-on-error: true

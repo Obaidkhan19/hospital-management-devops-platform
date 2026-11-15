@@ -1,0 +1,38 @@
+# plan.yaml - RKE2 upgrade drill with Rancher's system-upgrade-controller. NOT applied by Argo CD (not in apps/).
+# Steps are in docs/runbook.md. The controller upgrades the servers first, then the workers, one node at a time.
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: server-plan
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  serviceAccountName: system-upgrade
+  nodeSelector:
+    matchExpressions:
+      - {key: node-role.kubernetes.io/control-plane, operator: In, values: ["true"]}
+  tolerations:
+    - {key: CriticalAddonsOnly, operator: Exists}
+  upgrade:
+    image: rancher/rke2-upgrade
+  channel: https://update.rke2.io/v1-release/channels/stable
+---
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: agent-plan
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  serviceAccountName: system-upgrade
+  prepare:
+    image: rancher/rke2-upgrade
+    args: ["prepare", "server-plan"]
+  nodeSelector:
+    matchExpressions:
+      - {key: node-role.kubernetes.io/control-plane, operator: DoesNotExist}
+  upgrade:
+    image: rancher/rke2-upgrade
+  channel: https://update.rke2.io/v1-release/channels/stable

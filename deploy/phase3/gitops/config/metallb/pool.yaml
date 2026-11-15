@@ -1,0 +1,19 @@
+# pool.yaml - the IPs MetalLB may hand out (inside the VM network 10.10.10.0/24, outside the node IPs).
+# Traefik takes 10.10.10.200. L2Advertisement = announce those IPs on the local network.
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: hospital-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 10.10.10.200-10.10.10.220
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: hospital-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - hospital-pool

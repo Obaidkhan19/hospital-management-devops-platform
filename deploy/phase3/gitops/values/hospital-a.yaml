@@ -1,0 +1,4 @@
+# hospital-a.yaml - Phase 3 override for Hospital A: a host name browsers resolve through /etc/hosts.
+# (hospital-a.localhost from Phase 2 does not work here, browsers send *.localhost to 127.0.0.1.)
+ingress:
+  host: hospital-a.test

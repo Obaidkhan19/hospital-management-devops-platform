@@ -1,0 +1,45 @@
+# Velero: backs up the hospital namespaces (including the Phase 2 "backups" volume with the SQL .bak files)
+# to MinIO, which runs on your laptop OUTSIDE the cluster (deploy/phase3/minio), so backups survive a rebuild.
+# 10.10.10.1 is your laptop as seen from the VMs. The MinIO login comes from Vault through ESO (cloud-credentials).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: velero
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+spec:
+  project: default
+  source:
+    repoURL: https://vmware-tanzu.github.io/helm-charts
+    chart: velero
+    targetRevision: "10.*"
+    helm:
+      valuesObject:
+        upgradeCRDs: false
+        deployNodeAgent: true
+        credentials: {useSecret: true, existingSecret: cloud-credentials}
+        initContainers:
+          - name: velero-plugin-for-aws
+            image: velero/velero-plugin-for-aws:v1.12.0
+            volumeMounts:
+              - {mountPath: /target, name: plugins}
+        configuration:
+          defaultVolumesToFsBackup: true
+          backupStorageLocation:
+            - name: default
+              provider: aws
+              bucket: velero
+              config: {region: minio, s3ForcePathStyle: "true", s3Url: "http://10.10.10.1:9000"}
+          volumeSnapshotLocation: []
+        schedules:
+          hospital-daily:
+            schedule: "30 2 * * *"
+            template:
+              ttl: 168h
+              includedNamespaces: [hospital-a, hospital-b]
+  destination: {server: https://kubernetes.default.svc, namespace: velero}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    managedNamespaceMetadata: {labels: {pod-security.kubernetes.io/enforce: privileged}}
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

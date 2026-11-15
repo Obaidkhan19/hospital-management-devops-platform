@@ -1,0 +1,30 @@
+# Kyverno policy: images built by the release workflow must carry a cosign signature from that workflow
+# (keyless, proven by GitHub's identity). Only ghcr.io/obaidkhan19/hospital-web* is checked.
+# Audit = violations are reported (kubectl get policyreport -A), pods are not blocked.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-signed-images
+spec:
+  validationFailureAction: Audit
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-hospital-web
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [hospital-a, hospital-b]
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/obaidkhan19/hospital-web*"
+          mutateDigest: false
+          verifyDigest: false
+          required: true
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/Obaidkhan19/hospital-management-devops-platform/.github/workflows/phase3_release.yml@refs/heads/main"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev

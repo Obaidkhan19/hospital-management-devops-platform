@@ -1,0 +1,18 @@
+# Your hospital Grafana dashboard (deploy/monitoring/Dashboard/*.json, read by kustomize) plus the hospital alerts.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-config
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Obaidkhan19/hospital-management-devops-platform
+    targetRevision: main
+    path: deploy/phase3/gitops/config/monitoring
+  destination: {server: https://kubernetes.default.svc, namespace: monitoring}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [SkipDryRunOnMissingResource=true, CreateNamespace=true]
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

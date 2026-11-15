@@ -1,0 +1,18 @@
+# root-app.yaml - the "app of apps". Argo CD watches the apps/ folder and creates one
+# Application for every file in it (MetalLB, Traefik, Vault, monitoring, hospitals ...).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Obaidkhan19/hospital-management-devops-platform
+    targetRevision: main
+    path: deploy/phase3/gitops/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}

@@ -1,0 +1,40 @@
+---
+# base: what every VM needs before RKE2 (packages, firewall off, kernel settings, CIS extras).
+
+- name: Install packages
+  ansible.builtin.apt:
+    name: [curl, ca-certificates, iptables, conntrack]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Stop and disable the Ubuntu firewall (RKE2 manages its own rules)
+  ansible.builtin.systemd:
+    name: ufw
+    state: stopped
+    enabled: false
+  failed_when: false
+
+- name: Load the bridge module at boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k8s.conf
+    content: "br_netfilter\n"
+    mode: "0644"
+
+- name: Load the bridge module now
+  ansible.builtin.command: modprobe br_netfilter
+  changed_when: false
+
+- name: Kernel settings for Kubernetes
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/90-k8s.conf
+    content: |
+      net.ipv4.ip_forward=1
+      net.bridge.bridge-nf-call-iptables=1
+      net.bridge.bridge-nf-call-ip6tables=1
+    mode: "0644"
+  notify: Reload sysctl
+
+- name: CIS extras (only when rke2_cis is true)
+  ansible.builtin.include_tasks: cis.yml
+  when: rke2_cis | bool

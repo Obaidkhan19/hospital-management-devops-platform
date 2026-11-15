@@ -1,0 +1,22 @@
+# Kyverno: admission controller that checks every new pod against policies (see 10-kyverno-policies).
+# Cleanup controller is off to save RAM.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+spec:
+  project: default
+  source:
+    repoURL: https://kyverno.github.io/kyverno/
+    chart: kyverno
+    targetRevision: "3.*"
+    helm:
+      valuesObject:
+        cleanupController: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: kyverno}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

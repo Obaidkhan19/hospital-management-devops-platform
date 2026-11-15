@@ -1,0 +1,17 @@
+# Ingress for the Argo CD web UI (argocd.test), from config/ingress.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-ingress
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Obaidkhan19/hospital-management-devops-platform
+    targetRevision: main
+    path: deploy/phase3/gitops/config/ingress
+  destination: {server: https://kubernetes.default.svc, namespace: argocd}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

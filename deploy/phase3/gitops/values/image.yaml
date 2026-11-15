@@ -1,0 +1,7 @@
+# image.yaml - which web image both hospitals run. Starts with your existing Docker Hub image.
+# After the first run of .github/workflows/phase3_release.yml this file is rewritten
+# (ghcr.io/... + the commit tag) and Argo CD rolls it out. Keep the two lines "repository:" and "tag:".
+web:
+  image:
+    repository: mukhann/hospital-web
+    tag: v2

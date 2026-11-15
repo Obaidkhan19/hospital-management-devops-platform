@@ -1,0 +1,159 @@
+NetworkPolicy — network security
+
+
+
+RBAC — access permissions
+
+
+
+Pod Security Standards — workload security
+
+
+
+ResourceQuota / LimitRange — resource control
+
+
+
+CronJob — automatic SQL backups
+
+
+
+Helm — reusable deployments
+
+
+
+Kustomize — learn and compare
+
+
+
+kubeconform / kube-linter / Trivy — validation and security scanning
+
+
+
+GitHub Actions — automated checks
+
+
+
+Prometheus / Grafana / Alertmanager — monitoring
+
+
+from phase 1 two folders stop being used to run anything: deploy/k8s/02-hospital-a/ and deploy/k8s/03-hospital-b/. The chart replaces them.
+from phase 1 only git and k3d is used now
+
+
+
+PHAES 3
+deploy/helm/00-prereqs/*/01-secret.yaml.example	Not used. The secret now comes from Vault.  The new secret comes from Vault, which scripts/vault-init.sh fills and gitops/config/secrets/external-secrets.yaml copies into the cluster.
+ARGO CD = ACCESS HELM FILES FROM GitHub NOT LAPTOP
+deploy/monitoring/Dashboard/install-dashboard.sh	Not needed any more.  phase3/gitops/config/monitoring/kustomization.yaml
+
+deploy/k8s/00-cluster/k3d-config.yaml	Not used. The cluster is RKE2.
+deploy/phase3/terraform/ creates the 3 VMs.
+deploy/phase3/ansible/ installs RKE2 on them.
+delete k8s folder
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Here is every Phase 3 file in plain words. The paths start at deploy/phase3/ unless they say otherwise.
+
+Terraform (terraform/): builds the VMs
+File	What it does
+versions.tf	Says which Terraform version and which two plugins (libvirt, local) to use.
+variables.tf	All the settings you can change: how many VMs, how much RAM and CPU, which network.
+main.tf	The main recipe: it creates the network, the disks and 3 VMs on your laptop, and writes the Ansible inventory.
+cloud-init-user-data.yaml.tpl	First-boot setup of each VM: its name and a user ops with your SSH key.
+cloud-init-network.yaml.tpl	Gives each VM its fixed IP address.
+inventory.tpl	Template for the server list that Ansible reads.
+outputs.tf	Prints the VM names and IPs after the build.
+terraform.tfvars.example	Example of how to override a setting.
+Ansible (ansible/): installs RKE2 on the VMs
+File	What it does
+ansible.cfg	Basic Ansible settings (which key and which server list to use).
+site.yml	The main script: prepare all VMs, start the first server, add the others, add workers, then wait until all are ready.
+group_vars/all.yml	The cluster settings: RKE2 channel, the CIS hardening switch, backup schedule.
+roles/base/tasks/main.yml	Prepares each VM: installs tools, turns off the firewall, sets kernel options.
+roles/base/tasks/cis.yml	Extra settings for the CIS hardening profile. Runs only when you switch it on.
+roles/base/handlers/main.yml	Reloads the kernel settings after a change.
+roles/rke2_server/tasks/main.yml	Installs and starts RKE2 on the control-plane node.
+roles/rke2_server/templates/config.yaml.j2	The RKE2 config for servers: network, backup, metrics, taint, CIS.
+roles/rke2_server/handlers/main.yml	Restarts the server service after a config change.
+roles/rke2_agent/tasks/main.yml	Installs RKE2 on the workers and joins them to the server.
+roles/rke2_agent/templates/config.yaml.j2	The RKE2 config for workers.
+roles/rke2_agent/handlers/main.yml	Restarts the worker service after a config change.
+Scripts and helpers
+File	What it does
+Makefile	Short commands: make up, make vault, make stop, make start, make destroy.
+scripts/bootstrap.sh	Installs Argo CD once. After that, Argo CD installs everything else.
+scripts/vault-init.sh	Sets up and unseals Vault, creates the passwords, and prints your logins.
+.gitignore	Keeps secrets and generated files (kubeconfig, tokens, state) out of Git.
+README.md	The full guide: run from zero, daily use, troubleshooting.
+docs/runbook.md	Drills: alert test, backup restore, etcd restore, upgrade, Kyverno.
+docs/architecture.png	The architecture picture.
+Argo CD (gitops/): installs and runs everything
+File	What it does
+bootstrap/values-argocd.yaml	Settings for the one Argo CD install.
+bootstrap/root-app.yaml	Tells Argo CD to watch the apps/ folder and install what is in it.
+
+gitops/apps/ has one file per tool. Each says “install this from there into the cluster”.
+
+File	What it does
+01-metallb.yaml	Installs MetalLB, which gives services a real IP address.
+02-metallb-config.yaml	Applies the list of IPs MetalLB may use.
+03-local-path.yaml	Installs the disk storage for the database.
+04-traefik.yaml	Installs Traefik, the web entry point, on the fixed IP 10.10.10.200.
+05-cert-manager.yaml	Installs cert-manager, which makes HTTPS certificates (Rancher needs it).
+06-external-secrets.yaml	Installs the tool that copies secrets from Vault into the cluster.
+07-vault.yaml	Installs Vault, the secret store.
+08-secrets-config.yaml	Applies the “read this secret from Vault” recipes.
+09-kyverno.yaml	Installs Kyverno, the rule checker for new pods.
+10-kyverno-policies.yaml	Applies the three Kyverno rules.
+11-monitoring.yaml	Installs Prometheus, Grafana and Alertmanager with your Phase 2 values.
+12-monitoring-config.yaml	Loads your dashboard and the hospital alerts.
+13-loki.yaml	Installs Loki, which stores logs.
+14-alloy.yaml	Installs Alloy, which collects pod logs and sends them to Loki.
+15-velero.yaml	Installs Velero, which backs up the hospitals to MinIO.
+16-namespaces.yaml	Creates the hospital-a and hospital-b namespaces from your Phase 2 files.
+17-hospitals.yaml	Deploys both hospitals from your Helm chart with one template.
+18-platform-ingress.yaml	Gives Argo CD its web address.
+19-rancher.yaml	Installs Rancher, the web UI for the cluster.
+
+Settings that go with the apps:
+
+File	What it does
+config/metallb/pool.yaml	The IP range MetalLB may hand out (10.10.10.200 to .220).
+config/secrets/store.yaml	Tells the secrets tool how to log in to Vault.
+config/secrets/external-secrets.yaml	The four recipes: hospital A, hospital B, Grafana login, Velero login.
+config/monitoring/kustomization.yaml	Turns your dashboard JSON into a Grafana dashboard.
+config/monitoring/hospital-alerts.yaml	Three alerts: web down, database down, pod restarting.
+config/ingress/argocd.yaml	Web address argocd.test for Argo CD.
+policies/require-signed-images.yaml	Rule: the web image must carry a signature from your release workflow.
+policies/disallow-latest-tag.yaml	Rule: no image may use the :latest tag.
+policies/require-resources.yaml	Rule: hospital pods must set CPU and memory limits.
+values/monitoring.yaml	Phase 3 additions for monitoring: RKE2 metrics, Loki, Grafana login from Vault.
+values/hospital-a.yaml	Host name hospital-a.test for Hospital A.
+values/hospital-b.yaml	Host name hospital-b.test for Hospital B.
+values/image.yaml	Which web image both hospitals run. The release workflow updates it.
+upgrade/plan.yaml	RKE2 upgrade plan for the drill. You apply it by hand.
+Backup storage (minio/)
+File	What it does
+compose.yaml	Runs MinIO on your laptop, outside the cluster, so backups survive a rebuild.
+.env.example	Example of the MinIO login file you copy to .env.
+CI (.github/workflows/)
+File	What it does
+phase3_iac_validate.yml	Checks the Terraform, Ansible and Argo CD files for mistakes before you use them.
+phase3_release.yml	Builds the image, scans it, signs it, pushes it to ghcr.io, and writes the new tag to image.yaml.
+

@@ -1,0 +1,32 @@
+# Managed by Ansible (rke2_server). RKE2 reads this file at start.
+token: {{ rke2_token }}
+{% if rke2_join | default(false) | bool %}
+server: https://{{ rke2_api_address }}:9345
+{% endif %}
+node-name: {{ inventory_hostname }}
+tls-san:
+  - {{ rke2_api_address }}
+  - rke2.hospital.test
+write-kubeconfig-mode: "0644"
+cni: canal
+# We install Traefik ourselves with Argo CD (the Phase 2 chart expects it in kube-system).
+disable:
+  - rke2-ingress-nginx
+  - rke2-traefik
+# etcd backup and metrics for Prometheus.
+etcd-expose-metrics: true
+etcd-snapshot-schedule-cron: "{{ rke2_etcd_snapshot_cron }}"
+etcd-snapshot-retention: {{ rke2_etcd_snapshot_retention }}
+kube-controller-manager-arg:
+  - bind-address=0.0.0.0
+kube-scheduler-arg:
+  - bind-address=0.0.0.0
+kube-proxy-arg:
+  - metrics-bind-address=0.0.0.0:10249
+{% if rke2_server_taint | bool %}
+node-taint:
+  - CriticalAddonsOnly=true:NoExecute
+{% endif %}
+{% if rke2_cis | bool %}
+profile: cis
+{% endif %}

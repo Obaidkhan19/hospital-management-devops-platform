@@ -1,0 +1,75 @@
+#  checks for the infrastructure code. Runs BEFORE anything touches your laptop.
+#    terraform fmt + validate, tflint  : the VM code
+#    ansible-lint                      : the RKE2 install code (advisory at first)
+#    kubeconform                       : the Argo CD apps and policies (CRDs without a schema are skipped)
+#    kustomize build                   : the dashboard ConfigMap reads the JSON from deploy/monitoring
+#    trivy config                      : misconfiguration scan, report only (same as the Phase 2 workflow)
+name: phase3_iac_validate
+
+on:
+  pull_request:
+    paths:
+      - "deploy/phase3/**"
+      - ".github/workflows/phase3_iac_validate.yml"
+  push:
+    paths:
+      - "deploy/phase3/**"
+      - ".github/workflows/phase3_iac_validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v7
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # terraform reads the public key file, so give the runner a throw-away one
+      - name: Terraform fmt and validate
+        run: |
+          mkdir -p ~/.ssh && ssh-keygen -q -t ed25519 -N "" -f ~/.ssh/id_ed25519
+          terraform -chdir=deploy/phase3/terraform fmt -check -recursive
+          terraform -chdir=deploy/phase3/terraform init -backend=false -input=false
+          terraform -chdir=deploy/phase3/terraform validate
+
+      - name: Set up tflint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: tflint
+        run: tflint --chdir=deploy/phase3/terraform
+
+      - name: ansible-lint
+        continue-on-error: true
+        run: |
+          pip install ansible-lint
+          cd deploy/phase3/ansible && ansible-lint --profile basic
+
+      - name: Download kubeconform
+        run: curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+
+      - name: kubeconform (Argo CD apps, config and policies)
+        run: |
+          ./kubeconform -strict -ignore-missing-schemas -summary \
+            deploy/phase3/gitops/apps deploy/phase3/gitops/config/metallb \
+            deploy/phase3/gitops/config/secrets deploy/phase3/gitops/config/ingress \
+            deploy/phase3/gitops/policies deploy/phase3/gitops/bootstrap/root-app.yaml
+
+      - name: Kustomize build of the monitoring config
+        run: kubectl kustomize --load-restrictor LoadRestrictionsNone deploy/phase3/gitops/config/monitoring > /dev/null
+
+      - name: Trivy config scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: deploy/phase3
+          severity: HIGH,CRITICAL
+          format: table
+          exit-code: '0'

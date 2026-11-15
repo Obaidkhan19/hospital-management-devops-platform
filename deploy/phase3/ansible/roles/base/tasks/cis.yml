@@ -1,0 +1,21 @@
+---
+# cis.yml - host settings that the RKE2 CIS profile expects (see the RKE2 hardening guide).
+
+- name: Create the etcd system user
+  ansible.builtin.user:
+    name: etcd
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+    comment: etcd user
+
+- name: CIS kernel settings
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/60-rke2-cis.conf
+    content: |
+      vm.panic_on_oom=0
+      vm.overcommit_memory=1
+      kernel.panic=10
+      kernel.panic_on_oops=1
+    mode: "0644"
+  notify: Reload sysctl

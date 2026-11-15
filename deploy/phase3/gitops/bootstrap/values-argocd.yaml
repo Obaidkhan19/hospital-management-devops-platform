@@ -1,0 +1,12 @@
+# values-argocd.yaml - settings for the one Argo CD install done by scripts/bootstrap.sh.
+# After that, Argo CD installs everything else from Git (apps/ folder).
+configs:
+  params:
+    server.insecure: true            # Traefik handles the outside, so Argo serves plain HTTP inside
+  cm:
+    # lets the dashboard ConfigMap read deploy/monitoring/Dashboard/*.json from outside its folder
+    kustomize.buildOptions: --load-restrictor LoadRestrictionsNone
+dex:
+  enabled: false
+notifications:
+  enabled: false

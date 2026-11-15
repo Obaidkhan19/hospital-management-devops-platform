@@ -1,0 +1,20 @@
+# Creates hospital-a and hospital-b with their Pod Security labels by applying your existing
+# Phase 2 folder deploy/helm/00-prereqs. The secret files there end in .example, so they are NOT applied;
+# the real hospital-secret now comes from Vault through External Secrets.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: namespaces
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Obaidkhan19/hospital-management-devops-platform
+    targetRevision: main
+    path: deploy/helm/00-prereqs
+    directory: {recurse: true, include: "*.yaml"}
+  destination: {server: https://kubernetes.default.svc, namespace: default}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

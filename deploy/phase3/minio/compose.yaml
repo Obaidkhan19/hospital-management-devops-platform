@@ -1,0 +1,26 @@
+# compose.yaml - MinIO (S3 storage) on your laptop, OUTSIDE the cluster. Velero sends backups here,
+# so they survive when you destroy the VMs. Start: docker compose up -d. The init container creates the bucket "velero".
+# Image tag is pinned: MinIO stopped publishing new community images, so this one is frozen on purpose.
+services:
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    env_file: .env
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    env_file: .env
+    entrypoint: >
+      /bin/sh -c "until mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD; do sleep 2; done;
+      mc mb -p local/velero; exit 0"
+
+volumes:
+  minio-data:

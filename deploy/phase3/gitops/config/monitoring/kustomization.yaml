@@ -1,0 +1,16 @@
+# kustomization.yaml - turns your existing dashboard file deploy/monitoring/Dashboard/hospital-kubernetes-monitoring.json
+# into a ConfigMap labelled grafana_dashboard=1 (Grafana imports it by itself) and adds the alert rules.
+# This replaces running install-dashboard.sh by hand. The JSON stays in one place, no copy.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+resources:
+  - hospital-alerts.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    grafana_dashboard: "1"
+configMapGenerator:
+  - name: hospital-kubernetes-dashboard
+    files:
+      - hospital-kubernetes-monitoring.json=../../../../monitoring/Dashboard/hospital-kubernetes-monitoring.json

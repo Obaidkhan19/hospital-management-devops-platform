@@ -1,0 +1,31 @@
+# hospital-alerts.yaml - Prometheus alert rules for the hospitals. Alertmanager shows them at http://alertmanager.test.
+# (No e-mail receiver is configured, to keep the project free of credentials.)
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hospital-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: hospital
+      rules:
+        - alert: HospitalWebDown
+          expr: kube_deployment_status_replicas_available{namespace=~"hospital-.*", deployment="web"} == 0
+          for: 1m
+          labels: {severity: critical}
+          annotations:
+            summary: "No web pod is running in {{ $labels.namespace }}"
+        - alert: HospitalDatabaseDown
+          expr: kube_statefulset_status_replicas_ready{namespace=~"hospital-.*", statefulset="db"} == 0
+          for: 1m
+          labels: {severity: critical}
+          annotations:
+            summary: "The SQL Server pod is not ready in {{ $labels.namespace }}"
+        - alert: HospitalPodRestarting
+          expr: increase(kube_pod_container_status_restarts_total{namespace=~"hospital-.*"}[15m]) > 3
+          for: 5m
+          labels: {severity: warning}
+          annotations:
+            summary: "{{ $labels.pod }} restarted more than 3 times in 15 minutes"

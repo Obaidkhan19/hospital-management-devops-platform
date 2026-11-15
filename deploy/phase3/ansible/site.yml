@@ -1,0 +1,59 @@
+---
+# site.yml - builds the RKE2 cluster on the VMs Terraform created.
+#   1 prepare every VM  ->  2 first server  ->  3 other servers (only if 3)
+#   4 workers           ->  5 wait until all nodes are Ready, copy kubeconfig to this laptop
+
+- name: Prepare all VMs
+  hosts: all
+  become: true
+  roles:
+    - base
+
+- name: First control-plane node
+  hosts: rke2_servers[0]
+  become: true
+  roles:
+    - rke2_server
+
+- name: Other control-plane nodes (skipped when there is only one)
+  hosts: rke2_servers[1:]
+  become: true
+  serial: 1
+  vars:
+    rke2_join: true
+  roles:
+    - rke2_server
+
+- name: Workers
+  hosts: rke2_agents
+  become: true
+  roles:
+    - rke2_agent
+
+- name: Check the cluster and fetch the kubeconfig
+  hosts: rke2_servers[0]
+  become: true
+  tasks:
+    - name: Wait until every node is Ready
+      ansible.builtin.command: >
+        /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml
+        wait --for=condition=Ready node --all --timeout=600s
+      changed_when: false
+
+    - name: Copy kubeconfig to this laptop
+      ansible.builtin.fetch:
+        src: /etc/rancher/rke2/rke2.yaml
+        dest: "{{ playbook_dir }}/../kubeconfig"
+        flat: true
+
+- name: Point the kubeconfig at the server address
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Replace 127.0.0.1 with the API address
+      ansible.builtin.replace:
+        path: "{{ playbook_dir }}/../kubeconfig"
+        regexp: 'https://127\.0\.0\.1:6443'
+        replace: "https://{{ rke2_api_address }}:6443"
+        mode: "0600"

@@ -1,0 +1,33 @@
+# HashiCorp Vault: the secret store. One node with file storage on a local-path disk, no injector (ESO delivers secrets).
+# After every cluster start Vault is sealed: run "make vault" (scripts/vault-init.sh) to set it up and unseal it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+spec:
+  project: default
+  source:
+    repoURL: https://helm.releases.hashicorp.com
+    chart: vault
+    targetRevision: "0.*"
+    helm:
+      valuesObject:
+        injector: {enabled: false}
+        ui: {enabled: true}
+        server:
+          dataStorage: {enabled: true, size: 1Gi, storageClass: local-path}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 384Mi}
+          ingress:
+            enabled: true
+            ingressClassName: traefik
+            hosts:
+              - {host: vault.test}
+  destination: {server: https://kubernetes.default.svc, namespace: vault}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]
+    retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}

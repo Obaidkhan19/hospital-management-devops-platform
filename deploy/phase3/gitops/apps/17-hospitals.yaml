@@ -1,0 +1,40 @@
+# ApplicationSet: one Application per hospital from ONE template, using your Phase 2 Helm chart unchanged.
+# Release name = namespace (the chart needs that). Values are layered, last wins:
+#   chart values.yaml -> values-hospital-X.yaml (your Phase 2 file) -> phase3 values/hospital-X.yaml (hostname .test)
+#   -> phase3 values/image.yaml (the image tag, updated by the release workflow).
+# ignoreDifferences on replicas stops Argo CD from fighting the autoscaler.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: hospitals
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+spec:
+  generators:
+    - list:
+        elements:
+          - {name: hospital-a}
+          - {name: hospital-b}
+  template:
+    metadata:
+      name: '{{name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/Obaidkhan19/hospital-management-devops-platform
+        targetRevision: main
+        path: deploy/helm/hospital
+        helm:
+          releaseName: '{{name}}'
+          valueFiles:
+            - ../values-{{name}}.yaml
+            - ../../phase3/gitops/values/{{name}}.yaml
+            - ../../phase3/gitops/values/image.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{name}}'
+      ignoreDifferences:
+        - {group: apps, kind: Deployment, jsonPointers: [/spec/replicas]}
+      syncPolicy:
+        automated: {prune: true, selfHeal: true}
+        retry: {limit: 20, backoff: {duration: 20s, factor: 2, maxDuration: 5m}}
