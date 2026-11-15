@@ -9,7 +9,7 @@
 #   make wipe      down + delete the MinIO backups and downloaded images (frees ALL disk)
 SHELL := /bin/bash
 export KUBECONFIG := $(CURDIR)/kubeconfig
-VIRSH := virsh -c qemu:///system
+VIRSH := sudo virsh -c qemu:///system
 HOSTS := 10.10.10.200 hospital-a.test hospital-b.test argocd.test grafana.test prometheus.test alertmanager.test vault.test rancher.test
 
 .PHONY: up minio vms cluster bootstrap vault hosts status stop start destroy minio-down down wipe
@@ -53,7 +53,9 @@ start:
 	@echo "Wait about 2 minutes, then run: make vault   (Vault is sealed after a restart)"
 
 destroy:
-	terraform -chdir=terraform destroy -auto-approve
+	terraform -chdir=terraform init -input=false
+	-terraform -chdir=terraform destroy -auto-approve
+	-for n in $$($(VIRSH) list --all --name | grep rke2); do $(VIRSH) destroy $$n; $(VIRSH) undefine $$n --remove-all-storage; done
 	rm -f kubeconfig .rke2-token .vault-init.json .vault-secrets.txt
 
 minio-down:
@@ -69,5 +71,5 @@ wipe: destroy
 	-$(VIRSH) pool-undefine hospital
 	-$(VIRSH) net-destroy hospital
 	-$(VIRSH) net-undefine hospital
-	rm -rf /var/lib/libvirt/images/hospital 2>/dev/null || sudo rm -rf /var/lib/libvirt/images/hospital
-	@echo "Everything of this project is removed. Check with: virsh -c qemu:///system list --all ; docker ps -a"
+	sudo rm -rf /var/lib/libvirt/images/hospital
+	@echo "Everything of this project is removed. Check with: sudo virsh -c qemu:///system list --all ; docker ps -a"
