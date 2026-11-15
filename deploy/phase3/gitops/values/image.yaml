@@ -3,5 +3,5 @@
 # (ghcr.io/... + the commit tag) and Argo CD rolls it out. Keep the two lines "repository:" and "tag:".
 web:
   image:
-    repository: mukhann/hospital-web
-    tag: v2
+    repository: ghcr.io/obaidkhan19/hospital-web
+    tag: sha-802b75e
